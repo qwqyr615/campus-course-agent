@@ -59,6 +59,10 @@
               <el-icon><Calendar /></el-icon>
               课表管理
             </el-menu-item>
+            <el-menu-item v-if="userInfo?.role !== 'admin'" index="/manager/study-plan">
+              <el-icon><Notebook /></el-icon>
+              学习计划
+            </el-menu-item>
           </el-menu>
         </el-aside>
         <el-main>
@@ -73,7 +77,7 @@
 import router from '@/router'
 import { logout } from '@/utils/auth'
 import { useUser } from '@/utils/user'
-import { Menu as IconMenu, User, Reading, Calendar } from '@element-plus/icons-vue'
+import { Menu as IconMenu, User, Reading, Calendar, Notebook } from '@element-plus/icons-vue'
 
 const { userInfo } = useUser()
 

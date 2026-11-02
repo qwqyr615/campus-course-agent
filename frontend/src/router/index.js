@@ -20,7 +20,8 @@ const router = createRouter({
           path: 'schedule-manage',
           name: 'ScheduleManage',
           component: () => import('@/views/ScheduleManage.vue')
-        }
+        },
+        { path: 'study-plan', name: 'StudyPlan', component: () => import('@/views/StudyPlan.vue') }
       ]
     },
     { path: '/login', name: 'Login', component: () => import('@/views/Login.vue') },
