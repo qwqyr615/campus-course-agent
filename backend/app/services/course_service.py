@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.common.exceptions import BusinessException
 from app.models.course import Course
 from app.schemas.course import CourseCreateRequest, CourseResponse, CourseUpdateRequest
+from app.models.schedule import Schedule
 
 
 def list_courses(db: Session, keywords: str | None = None) -> list[CourseResponse]:
@@ -71,9 +72,11 @@ def update_course(
 
 
 def delete_course(db: Session, course_id: int) -> None:
-    """删除课程"""
     row = db.query(Course).filter(Course.id == course_id).first()
     if not row:
         raise BusinessException(message="课程不存在")
+    linked = db.query(Schedule.id).filter(Schedule.course_id == course_id).first()
+    if linked:
+        raise BusinessException(message="该课程已关联课表，无法删除")
     db.delete(row)
     db.commit()
