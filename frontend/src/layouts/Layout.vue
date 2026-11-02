@@ -47,6 +47,10 @@
               <el-icon><User /></el-icon>
               <span>用户管理</span>
             </el-menu-item>
+            <el-menu-item index="/manager/course" v-if="userInfo?.role === 'admin'">
+              <el-icon><Reading /></el-icon>
+              <span>课程管理</span>
+            </el-menu-item>
           </el-menu>
         </el-aside>
         <el-main>
@@ -61,7 +65,7 @@
 import router from '@/router'
 import { logout } from '@/utils/auth'
 import { useUser } from '@/utils/user'
-import { Menu as IconMenu, User } from '@element-plus/icons-vue'
+import { Menu as IconMenu, User, Reading } from '@element-plus/icons-vue'
 
 const { userInfo } = useUser()
 

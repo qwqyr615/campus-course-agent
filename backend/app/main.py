@@ -4,6 +4,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
 from app.config import UPLOAD_DIR
 from app.models.user import User
+from app.models.course import Course
 from app.database import Base, engine
 from app.api import api
 from starlette.middleware.cors import CORSMiddleware
