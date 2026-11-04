@@ -80,7 +80,7 @@ def list_schedules(
     user_id: int | None = None,
     class_date: date | None = None,
 ) -> PageResponse:
-    """查询全部课表列表  MCP工具使用"""
+    """查询全部课表列表 不分页给mcp工具使用"""
     rows = _base_query(db, user_id, class_date).order_by(Schedule.id.desc()).all()
     return [
         _to_response(
@@ -144,3 +144,24 @@ def delete_schedule(db: Session, schedule_id: int) -> None:
         raise BusinessException(message="课表不存在")
     db.delete(row)
     db.commit()
+
+
+def list_schedules_as_dict(
+    db: Session,
+    user_id: int | None = None,
+    date_str: str | None = None,
+) -> list[dict]:
+    """查询全部课表列表  MCP工具使用"""
+    date_text = (date_str or "").strip()
+    class_date = date.fromisoformat(date_text) if date_text else None
+    items = list_schedules(db, user_id, class_date)
+    return [
+        {
+            "date": item.class_date.isoformat(),  # date -> str: YYYY-MM-DD
+            "period": item.period,
+            "course_id": item.course_id,
+            "course_name": item.course_name,
+            "location": item.location,
+        }
+        for item in items
+    ]
