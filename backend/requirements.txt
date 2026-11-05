@@ -9,3 +9,5 @@ python-multipart==0.0.32
 cryptography==50.0.1
 websockets==17.4
 fastmcp==2.13.0.2
+httpx==0.28.1
+langchain-mcp-adapters==0.3.2
