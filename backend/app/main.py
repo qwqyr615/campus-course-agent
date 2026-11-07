@@ -6,6 +6,7 @@ from app.config import UPLOAD_DIR
 from app.models import *
 from app.database import Base, engine
 from app.api import api
+import logging
 from starlette.middleware.cors import CORSMiddleware
 from app.common.exceptions import (
     BusinessException,
@@ -13,6 +14,11 @@ from app.common.exceptions import (
     http_excpetion_hadler,
     validation_excpetion_hadler,
     global_excpetion_hadler,
+)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
 )
 
 Base.metadata.create_all(bind=engine)  # 自动帮我们创数据库表

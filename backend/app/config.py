@@ -13,6 +13,12 @@ class Settings(BaseSettings):
     MCP_HOST: str = "127.0.0.1"
     MCP_PORT: int = 8001
     MCP_PATH: str = "/mcp"
+    # 大模型（OpenAI 兼容接口）
+    LLM_BASE_URL: str
+    LLM_API_KEY: str
+    LLM_MODEL_NAME: str
+    # Agent 循环上限：模型 -> 工具 -> 模型 的最大轮数，防止死循环
+    AGENT_RECURSION_LIMIT: int = 10
 
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env", env_file_encoding="utf-8"
