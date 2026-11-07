@@ -4,6 +4,7 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langgraph.errors import GraphRecursionError
 from langchain.agents import create_agent
 from datetime import date
+import json
 
 from app.config import settings
 from app.common.exceptions import BusinessException
@@ -14,17 +15,17 @@ from app.schemas.chat import ChatMessage
 logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """你是校园课程智能助手，使用中文回答。
-今天是 {today}。将“明天”“这周三”等相对日期换算成 YYYY-MM-DD。
-本周按周一至周日计算；日期含义不明确时，先询问用户。
-get_my_schedules 查询当前登录用户自己的课表。
-参数 date 为可选的 YYYY-MM-DD；不传则查询全部课表。
+今天是 {today}。本周按周一至周日计算。
+将相对日期换算为明确日期；日期含义不明确时，先询问用户。
+
 回答规则：
-1. 查询课表时必须调用工具，只根据本轮工具返回的数据回答。
-2. 查询某一天时传 date；查询一周时可获取全部课表，再按日期筛选。
-3. 工具结果含 error 时说明查询失败，不能将失败解释成没有课程。
-4. 正常返回且没有符合条件的课程时，说明对应日期没有课程安排。
-5. 列出日期、节次、课程和地点，并按日期、节次排序。
-6. 闲聊直接回答；没有实时查询工具的事情，应说明无法实时查询"""
+1. 查询个人课表时，必须使用可用的课表查询工具，
+   只根据本轮查询结果回答，不编造课程。
+2. 查询失败时明确说明失败，不能解释为没有课程。
+3. 查询成功且没有符合条件的课程时，说明没有课程安排。
+4. 列出日期、节次、课程和地点，按日期、节次排序。
+5. 闲聊直接回答；缺少相应实时查询能力时，说明无法实时查询。
+"""
 
 
 def _build_model() -> ChatOpenAI:
@@ -92,6 +93,12 @@ def _read_result(message: list[BaseMessage]) -> dict:
     return {"answer": message[-1].text, "tools_used": tools_used}
 
 
+def _sse(event_type: str, data: dict) -> str:
+    """将事件类型和数据编码为一条 SSE 消息。"""
+    payload = json.dumps({"type": event_type, **data}, ensure_ascii=False)
+    return f"data: {payload}\n\n"
+
+
 async def ask(question: str, history: list[ChatMessage], authorization: str) -> dict:
     """根据历史对话构建模型请求，加载MCP工具，创建本次请求的Agent，发送请求，返回模型回复"""
     model = _build_model()
@@ -124,3 +131,56 @@ async def ask(question: str, history: list[ChatMessage], authorization: str) -> 
         ) from exc
     new_messages = result["messages"][len(input_messages) :]
     return _read_result(new_messages)
+
+
+async def stream_ask(question: str, history: list[ChatMessage], authorization: str):
+    """执行 Agent，并依次返回处理状态、工具过程和回答。"""
+    try:
+        yield _sse("status", {"messges": "正在加载课表工具"})
+        model = _build_model()
+        # 工具按本次JWT加载， 查询身份仍由MCP确认
+        tools = await _load_mcp_tools(authorization)
+        if not tools:
+            raise BusinessException(
+                message="MCP未返回任何可用的 tool，请检查 MCP 服务和后端日志"
+            )
+        agent = create_agent(
+            model,
+            tools,
+            system_prompt=SYSTEM_PROMPT.format(today=date.today().isoformat()),
+        )
+        messages = _build_messages(history, question)
+        yield _sse("status", {"message": "正在生成回答"})
+        model_messages = []
+        async for event in agent.astream_events(
+            {"messages": messages},
+            version="v2",
+            config={"recursion_limit": settings.AGENT_RECURSION_LIMIT},
+        ):
+            kind = event["event"]
+            # 模型生成中的文字用于即时显示；工具参数不作为正文显示。
+            if kind == "on_chat_model_stream":
+                text = event["data"]["chunk"].text
+                if text:
+                    yield _sse("token", {"content": text})
+            # 工具开始和返回只展示过程，返回不等于业务查询成功。
+            elif kind == "on_tool_start":
+                yield _sse("tool_start", {"name": event["name"]})
+            elif kind == "on_tool_end":
+                yield _sse("tool_end", {"name": event["name"]})
+            # 每次模型调用结束后收集完整消息，复用第 08 节的最终答案检查。
+            elif kind == "on_chat_model_end":
+                model_messages.append(event["data"]["output"])
+
+        result = _read_result(model_messages)
+        yield _sse("done", result)
+    except GraphRecursionError:
+        logger.exception("流式 Agent 执行步数达到上限")
+        yield _sse("error", {"message": "本次处理的步骤过多，请缩小问题范围重试"})
+    except BusinessException as exc:
+        logger.warning("流式对话业务失败：%s", exc.message)
+        yield _sse("error", {"message": exc.message})
+    except Exception:
+        # 响应已经开始，错误也通过 SSE 返回，具体异常保留在日志中。
+        logger.exception("流式 Agent 执行失败")
+        yield _sse("error", {"message": "对话处理失败，请检查后端日志"})

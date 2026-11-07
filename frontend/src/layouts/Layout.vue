@@ -63,6 +63,10 @@
               <el-icon><Notebook /></el-icon>
               学习计划
             </el-menu-item>
+            <el-menu-item index="/manager/chat">
+              <el-icon><ChatDotRound /></el-icon>
+              课程助手
+            </el-menu-item>
           </el-menu>
         </el-aside>
         <el-main>
@@ -77,7 +81,14 @@
 import router from '@/router'
 import { logout } from '@/utils/auth'
 import { useUser } from '@/utils/user'
-import { Menu as IconMenu, User, Reading, Calendar, Notebook } from '@element-plus/icons-vue'
+import {
+  Menu as IconMenu,
+  User,
+  Reading,
+  Calendar,
+  Notebook,
+  ChatDotRound
+} from '@element-plus/icons-vue'
 
 const { userInfo } = useUser()
 
