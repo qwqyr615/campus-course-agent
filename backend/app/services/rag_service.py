@@ -3,6 +3,11 @@ from pathlib import Path
 from pypdf import PdfReader
 from docx import Document
 from app.common.exceptions import BusinessException
+from langchain_chroma import Chroma
+from langchain_openai import OpenAIEmbeddings
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -51,3 +56,79 @@ def extract_document_text(path: Path) -> str:
             message="未能抽取到文本，空白文档或扫描件无法预览", code=400
         )
     return text
+
+
+# Embedding 客户端工厂
+def _embeddings() -> OpenAIEmbeddings:
+    """创建向量模型客户端；缺少莫要时在调用钱给出明确错误"""
+    # 未配置密钥时先停止，避免将配置缺失误判为远程服务故障。
+    if not settings.EMBEDDING_API_KEY:
+        raise BusinessException(message="请先配置 EMBEDDING_API_KEY", code=500)
+    return OpenAIEmbeddings(
+        model=settings.EMBEDDING_MODEL,
+        base_url=settings.EMBEDDING_BASE_URL,
+        api_key=settings.EMBEDDING_API_KEY,
+        # 兼容本节所用的 OpenAI 兼容服务，关闭 OpenAI 的 token 长度预检
+        check_embedding_ctx_length=False,
+        chunk_size=32,
+    )
+
+
+# 获取 Chroma 客户端
+def get_vectorstore() -> Chroma:
+    """连接共享的 Chroma 服务并打开课程资料集合。"""
+    return Chroma(
+        collection_name=settings.CHROMA_COLLECTION,
+        embedding_function=_embeddings(),
+        host=settings.CHROMA_HOST,
+        port=settings.CHROMA_PORT,
+    )
+
+
+def delete_by_doc_id(doc_id: int) -> None:
+    """按文档 ID 删除片段；删除操作不需要调用 Embedding 服务。"""
+    store = Chroma(
+        collection_name=settings.CHROMA_COLLECTION,
+        host=settings.CHROMA_HOST,
+        port=settings.CHROMA_PORT,
+    )
+    store.delete(where={"doc_id": str(doc_id)})
+
+
+# 入库
+def ingest_kb_file(path: Path, source: str, doc_id: int) -> int:
+    """提取文本并写入向量库，返回实际保存的片段数。"""
+    text = extract_document_text(path)
+    # 先按段落拆分，再按字符数拆分，避免过长的段落被截断。
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=settings.CHROMA_CHUNK_SIZE,
+        chunk_overlap=settings.CHROMA_CHUNK_OVERLAP,
+    )
+    chunks = splitter.split_text(text)
+    logger.info("文档 %s 拆分为 %d 个片段", path.name, len(chunks))
+    if not chunks:
+        raise BusinessException(message="资料分块后没有可入库的文字", code=400)
+
+    # 构建元数据和 ID
+    # 元数据作用：后续可按 scope 筛选知识库内容，按 doc_id 删除/更新
+    metadata = {"source": source, "scope": "kb", "doc_id": str(doc_id)}
+    metadatas = [metadata.copy() for _ in chunks]  # 每个片段共享同一份元数据
+    ids = [f"doc-{doc_id}-chunk-{index}" for index in range(len(chunks))]  # 唯一ID
+
+    # 片段入库
+    try:
+        store = get_vectorstore()
+        # 长资料分批写入，避免一次把所有片段交给模型或 Chroma。
+        for offset in range(0, len(chunks), 32):
+            store.add_texts(
+                texts=chunks[offset : offset + 32],
+                metadatas=metadatas[offset : offset + 32],
+                ids=ids[offset : offset + 32],
+            )
+    except BusinessException:
+        raise
+    except Exception as exc:
+        logger.exception("文档向量入库失败，doc_id=%s", doc_id)
+        raise BusinessException(
+            message="向量入库失败，请检查 Embedding 配置及后端日志", code=500
+        ) from exc

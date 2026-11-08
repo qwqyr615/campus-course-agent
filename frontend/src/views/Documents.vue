@@ -29,7 +29,7 @@
         </el-button>
         <div style="margin-top: 6px; color: #909399; font-size: 12px">
           支持 .txt / .md / .pdf / .docx，单个文件不超过 100 MiB。同名不可重复；扫描版 PDF
-          可能抽不出文字。 同一批中任一上传失败，整批撤销。
+          可能抽不出文字。 同一批中任一文件上传或入库失败，整批撤销。
         </div>
       </div>
       <div v-else style="margin-bottom: 12px; color: #909399; font-size: 13px">
@@ -51,6 +51,13 @@
           <template #default="{ row }">{{ formatSize(row.size) }}</template>
         </el-table-column>
         <el-table-column prop="ext" label="类型" width="80" />
+        <el-table-column prop="ingested" label="已入库" width="90">
+          <template #default="{ row }">
+            <el-tag :type="row.ingested ? 'success' : 'info'" size="small">
+              {{ row.ingested ? '是' : '否' }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="创建时间" width="180">
           <template #default="{ row }">{{ formatTime(row.create_time) }}</template>
         </el-table-column>
@@ -58,6 +65,16 @@
           <template #default="{ row }">
             <el-button type="primary" text bg size="small" @click="handlePreview(row)">
               预览
+            </el-button>
+            <el-button
+              type="primary"
+              text
+              bg
+              size="small"
+              :loading="reingestLoadingId === row.id"
+              @click="handleReingest(row)"
+            >
+              重新入库
             </el-button>
             <el-button type="danger" text bg size="small" @click="handleDelete(row)">
               删除
@@ -117,6 +134,7 @@ const previewLoading = ref(false)
 const previewTitle = ref('文档预览')
 const previewMeta = ref('')
 const previewText = ref('')
+const reingestLoadingId = ref(null) // 正在重新入库的文档 ID，控制对应按钮的加载状态
 let previewRequestId = 0 // 标记最近一次预览，防止旧请求覆盖新资料
 const total = computed(() => allData.value.length)
 const pageData = computed(() => {
@@ -196,23 +214,42 @@ const handlePreview = async (row) => {
   }
 }
 
+const handleReingest = async (row) => {
+  // 已有一份资料在入库时，不重复发起新的入库请求。
+  if (reingestLoadingId.value !== null) return
+  reingestLoadingId.value = row.id
+  try {
+    const res = await reingestDocumentApi(row.id)
+    if (res.code === 200) {
+      ElMessage.success(`「${row.original_name}」已重新入库`)
+    }
+  } catch {
+    // 请求拦截器已提示网络或 HTTP 错误。
+  } finally {
+    reingestLoadingId.value = null
+    // 失败时原文件仍在，但状态可能由“是”变成“否”，因此也刷新列表。
+    await load()
+  }
+}
+
 const handleDelete = async (row) => {
   try {
-    await ElMessageBox.confirm(`确认删除文档「${row.original_name}」及其原文件？`, '确认删除', {
-      type: 'warning'
-    })
+    await ElMessageBox.confirm(
+      `确认删除文档「${row.original_name}」及其原文件和向量片段？`,
+      '确认删除',
+      { type: 'warning' }
+    )
   } catch {
     // 取消或关闭确认框时，不调用删除接口。
     return
   }
   try {
     const res = await deleteDocumentApi(row.id)
-    if (res.code === 200) {
-      ElMessage.success('已删除')
-      await load()
-    }
+    if (res.code === 200) ElMessage.success('已删除')
   } catch {
     // 错误已由请求拦截器提示。
+  } finally {
+    await load() // 删除失败也可能已清理向量，需要同步最新入库状态。
   }
 }
 

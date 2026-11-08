@@ -79,3 +79,4 @@ backend/data/kb
 *.cache
 .cache/
 .zcode/
+*.bin

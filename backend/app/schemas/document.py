@@ -13,6 +13,7 @@ class KbDocumentResponse(BaseModel):
     size: int  # 文件大小，单位为字节
     ext: str  # 小写扩展名，例如 .pdf
     create_time: datetime  # 资料记录的创建时间
+    ingested: bool  # 页面展示的入库状态；false 的旧资料可以重新入库
 
     # 列表和上传服务返回 ORM 记录时，允许直接读取模型属性。
     model_config = ConfigDict(from_attributes=True)

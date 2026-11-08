@@ -18,3 +18,7 @@ langgraph==1.2.12
 pypdf==6.21.1 
 # python-docx 读取 DOCX 的段落和表格
 python-docx==1.2.0
+langchain-chroma==1.1.0
+# 负责分块
+langchain-text-splitters==1.1.2
+chromadb==1.5.9

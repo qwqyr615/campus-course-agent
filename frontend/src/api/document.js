@@ -17,5 +17,9 @@ export function previewDocumentApi(id) {
 }
 
 export function deleteDocumentApi(id) {
-  return request({ url: `/api/documents/${id}`, method: 'delete' })
+  return request({ url: `/api/documents/${id}`, method: 'delete', timeout: 0 })
+}
+
+export function reingestDocumentApi(id) {
+  return request({ url: `/api/documents/${id}/reingest`, method: 'post', timeout: 0 })
 }

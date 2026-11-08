@@ -1,4 +1,4 @@
-from sqlalchemy import Integer, String
+from sqlalchemy import Boolean, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -19,3 +19,6 @@ class KbDocument(Base):
     )
     size: Mapped[int] = mapped_column(Integer, nullable=False, comment="字节数")
     ext: Mapped[str] = mapped_column(String(20), nullable=False, comment="扩展名")
+    ingested: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, comment="是否已写入共享向量库"
+    )
