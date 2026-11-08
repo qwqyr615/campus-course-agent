@@ -71,6 +71,7 @@ lerna-debug.log*
 
 # ===== 运行时数据（用户上传的文件） =====
 backend/uploads/
+backend/data/kb
 
 # ===== 临时文件 / 缓存 =====
 *.tmp

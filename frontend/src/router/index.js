@@ -22,7 +22,8 @@ const router = createRouter({
           component: () => import('@/views/ScheduleManage.vue')
         },
         { path: 'study-plan', name: 'StudyPlan', component: () => import('@/views/StudyPlan.vue') },
-        { path: 'chat', name: 'Chat', component: () => import('@/views/Chat.vue') }
+        { path: 'chat', name: 'Chat', component: () => import('@/views/Chat.vue') },
+        { path: 'documents', name: 'Documents', component: () => import('@/views/Documents.vue') }
       ]
     },
     { path: '/login', name: 'Login', component: () => import('@/views/Login.vue') },

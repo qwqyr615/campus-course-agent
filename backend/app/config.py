@@ -31,6 +31,10 @@ UPLOAD_DIR = BASE_DIR / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 MAX_FILE_SIZE = 100 * 1024 * 1024  # 100M
 STUDY_PLAN_MAX_LENGTH = 2000
+# 课程资料单独归档，不放进已公开挂载的 uploads 目录。
+KB_DIR = BASE_DIR / "data" / "kb"
+KB_DIR.mkdir(parents=True, exist_ok=True)
+
 
 ALLOWED_EXTENSIONS = {
     ".jpg",

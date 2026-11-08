@@ -19,6 +19,8 @@ from app.common.exceptions import (
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+    filename="app.log",
+    encoding="utf-8",
 )
 
 Base.metadata.create_all(bind=engine)  # 自动帮我们创数据库表

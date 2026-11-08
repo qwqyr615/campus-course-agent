@@ -14,3 +14,7 @@ langchain-mcp-adapters==0.3.2
 langchain==1.4.2
 langchain-openai==1.6.6
 langgraph==1.2.12
+# 提取pdf文字
+pypdf==6.21.1 
+# python-docx 读取 DOCX 的段落和表格
+python-docx==1.2.0

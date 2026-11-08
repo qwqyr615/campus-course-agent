@@ -7,6 +7,7 @@ from app.api.schedule import router as schedule_router
 from app.api.study_plan import router as study_plan_router
 from app.api.mcp import router as mcp_router
 from app.api.chat import router as chat_router
+from app.api.document import router as document_router
 
 api = APIRouter(prefix="/api")
 
@@ -18,3 +19,4 @@ api.include_router(schedule_router)
 api.include_router(study_plan_router)
 api.include_router(mcp_router)
 api.include_router(chat_router)
+api.include_router(document_router)

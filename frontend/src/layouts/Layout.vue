@@ -67,6 +67,10 @@
               <el-icon><ChatDotRound /></el-icon>
               课程助手
             </el-menu-item>
+            <el-menu-item index="/manager/documents" v-if="userInfo?.role === 'admin'">
+              <el-icon><Document /></el-icon>
+              <span>文档管理</span>
+            </el-menu-item>
           </el-menu>
         </el-aside>
         <el-main>
