@@ -1,8 +1,8 @@
 <template>
   <div class="login-container">
     <div class="login-box">
-      <h1 style="font-size: 28px">智能系统</h1>
-      <div style="margin-top: 5px; margin-bottom: 30px">基于Agent智能系统</div>
+      <h1 style="font-size: 28px">校园课程智能助手</h1>
+      <div style="margin-top: 5px; margin-bottom: 30px">查课表、问资料、存计划</div>
 
       <el-form ref="formRef" :rules="rules" :model="form" label-width="0px" style="width: 100%">
         <el-form-item prop="username">

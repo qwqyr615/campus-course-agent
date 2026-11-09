@@ -95,7 +95,8 @@ const question = ref('')
 const messages = ref([
   {
     role: 'assistant',
-    content: '您好，我是校园课程助手。你可以询问自己的课表，例如「我明天有什么课？」。',
+    content:
+      '你好，我是校园课程助手。你可以查询自己的课表、提问课程资料，也可以让我制定学习计划；确认后说“保存”，我才会写入学习计划。',
     status: '',
     steps: []
   }
