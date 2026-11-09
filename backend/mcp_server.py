@@ -8,6 +8,8 @@ from app.config import settings
 from app.database import SessionLocal
 from app.dependencies.mcp_auth import user_id_from_authorization
 from app.services.schedule_service import list_schedules_as_dict
+from app.common.exceptions import BusinessException
+from app.services import rag_service
 
 # 创建一个名为 "campus-course-agent" 的 MCP 服务实例。
 mcp = FastMCP("campus-course-agent")
@@ -48,6 +50,31 @@ def get_my_schedules(
             db.close()
     except Exception as exc:
         return {"error": f"查询课表失败 {exc}", "items": []}
+
+
+@mcp.tool()
+def search_docs(
+    query: Annotated[str, Field(description="要从课程资料中检索的问题或关键词")],
+) -> dict:
+    """只读检索全站共享的课程资料；用户身份来自 JWT，不由模型填写。"""
+
+    try:
+        _current_user_id()  # 验证用户身份，失败会抛出异常
+    except BusinessException as exc:
+        return {"error": exc.message, "items": []}
+
+    result = rag_service.search_docs(query)
+    # 检索失败时保留 error，避免模型把服务故障解释成资料中没有答案。
+    if not result["ok"]:
+        return {
+            "error": result["error"],
+            "items": [],
+            "message": "资料检索当前不可用，请如实告知用户，不要编造资料内容。",
+        }
+    # 正常空结果保留说明；有片段时仅返回模型需要的 items。
+    if not result["items"]:
+        return {"items": [], "message": result["message"]}
+    return {"items": result["items"]}
 
 
 if __name__ == "__main__":

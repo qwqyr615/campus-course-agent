@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+from httpx import get
 from pypdf import PdfReader
 from docx import Document
 from app.common.exceptions import BusinessException
@@ -132,3 +133,32 @@ def ingest_kb_file(path: Path, source: str, doc_id: int) -> int:
         raise BusinessException(
             message="向量入库失败，请检查 Embedding 配置及后端日志", code=500
         ) from exc
+
+
+def search_docs(query: str) -> dict:
+    """检索最相近的3个片段，区分服务失败与没有可用的片段"""
+    question = query.strip()
+    if not question:
+        return {"ok": False, "error": "检索问题不能为空", "items": []}
+
+    try:
+        # 问题向量与资料向量使用同一模型，最多取三个相近片段供模型判断依据。
+        documents = get_vectorstore().similarity_search(question, k=3)
+    except BusinessException as exc:
+        return {"ok": False, "error": exc.message, "items": []}
+    except Exception:
+        logger.exception("检索课程资料失败")
+        return {"ok": False, "error": "资料检索服务异常，请查看后端日志", "items": []}
+
+    items = [
+        {
+            "content": document.page_content.strip(),
+            "source": (document.metadata or {}).get("source", "未知来源"),
+        }
+        for document in documents
+        if document.page_content.strip()
+    ]
+    # 请求成功但无可用正文，区别于前面捕获的配置或服务故障。
+    if not items:
+        return {"ok": True, "items": [], "message": "没有检索到资料片段"}
+    return {"ok": True, "items": items}
